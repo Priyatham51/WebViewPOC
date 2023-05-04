@@ -1,0 +1,49 @@
+name: Zip repository files and upload to another repository
+on:
+  push:
+    branches: [main]
+
+jobs:
+  zip-and-upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Version Increment
+        uses: reecetech/version-increment@2023.4.1
+        id: version
+        with:
+          scheme: semver
+          increment: patch
+      - name: Zip files
+        run: |
+          zip -r "provider1_v${{ steps.version.outputs.version }}.zip" .
+        env:
+          ZIP_PASSWORD: ${{ secrets.ZIP_PASSWORD }}
+      - name: Create release
+        uses: actions/create-release@v1
+        id: create_release
+        with:
+          tag_name: "v${{ steps.version.outputs.version }}"
+          release_name: "Release v${{ steps.version.outputs.version }}"
+          body: This is a test release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload release asset
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: "./provider1_v${{ steps.version.outputs.version }}.zip"
+          asset_name: "provider1_v${{ steps.version.outputs.version }}.zip"
+          asset_content_type: application/zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Pushes test file
+        uses: dmnemec/copy_file_to_another_repo_action@main
+        env:
+          API_TOKEN_GITHUB: ${{ secrets.API_TOKEN_GITHUB }}
+        with:
+          source_file: "./provider1_v${{ steps.version.outputs.version }}.zip"
+          destination_repo: 'TestPrep24/providerPacakageManager'
+          user_email: 'apriyatham@gmail.com'
+          user_name: 'Priyatham51'
+          commit_message: 'A custom message for the commit'
